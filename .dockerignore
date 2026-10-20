@@ -1,0 +1,10 @@
+**/__pycache__/
+**/*.pyc
+.git/
+.venv/
+README.md
+compose.yaml
+.env
+.env.example
+.gitignore
+datos/

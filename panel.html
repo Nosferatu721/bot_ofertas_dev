@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vigilante de ofertas</title>
+<style>
+  :root {
+    /* Escala tipografica de 4 pasos, cada uno >=1.25x del anterior, para que
+       la jerarquia se lea de un vistazo en vez de quedar plana. */
+    --t-xs: 12px;
+    --t-base: 16px;
+    --t-lg: 20px;
+    --t-xl: 32px;
+
+    --e-1: 6px;
+    --e-2: 12px;
+    --e-3: 20px;
+    --e-4: 32px;
+    --e-5: 48px;
+
+    /* Se evitan Inter y Roboto: en Windows, Segoe UI Variable da caracter
+       propio sin depender de una fuente remota. */
+    --fuente: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system,
+              "Helvetica Neue", Arial, sans-serif;
+    --fuente-titulo: "Segoe UI Variable Display", "Segoe UI", system-ui,
+                     -apple-system, sans-serif;
+    --fuente-cifra: ui-monospace, "Cascadia Mono", "Segoe UI Mono", Consolas, monospace;
+
+    --fondo: #f1f4f8;
+    --tarjeta: #ffffff;
+    --borde: #dde3ec;
+    --texto: #171e28;
+    --tenue: #656f7e;
+    --acento: #0d3878;
+    --nuevo: #0c6d41;
+    --nuevo-fondo: #e0f3e9;
+    --error: #a91d16;
+    --error-fondo: #fbe9e8;
+    --sombra: 0 1px 2px rgba(20, 30, 45, .06), 0 4px 12px rgba(20, 30, 45, .04);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fondo: #0f1319;
+      --tarjeta: #191f27;
+      --borde: #2a333f;
+      --texto: #e8edf4;
+      --tenue: #939eac;
+      --acento: #83aeeb;
+      --nuevo: #5cd79c;
+      --nuevo-fondo: #113026;
+      --error: #f59a93;
+      --error-fondo: #341715;
+      --sombra: 0 1px 2px rgba(0, 0, 0, .4), 0 4px 14px rgba(0, 0, 0, .25);
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: var(--e-4) var(--e-3) var(--e-5);
+    background: var(--fondo);
+    color: var(--texto);
+    font: var(--t-base)/1.55 var(--fuente);
+    -webkit-font-smoothing: antialiased;
+  }
+  .envoltorio { max-width: 1000px; margin: 0 auto; }
+
+  header {
+    display: flex; flex-wrap: wrap; gap: var(--e-2);
+    align-items: baseline; justify-content: space-between;
+    margin-bottom: var(--e-4);
+  }
+  h1 {
+    font: 600 var(--t-xl)/1.15 var(--fuente-titulo);
+    margin: 0; letter-spacing: -.02em;
+  }
+  .estado {
+    font-size: var(--t-xs); color: var(--tenue);
+    display: flex; align-items: center; gap: var(--e-1);
+  }
+  .punto { width: 8px; height: 8px; border-radius: 50%; background: var(--nuevo); flex: none; }
+  .punto.parpadeo { animation: latir 2s ease-in-out infinite; }
+  .punto.fallo { background: var(--error); animation: none; }
+  @keyframes latir { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+  @media (prefers-reduced-motion: reduce) { .punto.parpadeo { animation: none; } }
+
+  .metricas {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: var(--e-2); margin-bottom: var(--e-4);
+  }
+  .metrica {
+    background: var(--tarjeta); border: 1px solid var(--borde);
+    border-radius: 12px; padding: var(--e-2) var(--e-3); box-shadow: var(--sombra);
+  }
+  .metrica .cifra {
+    font: 600 var(--t-xl)/1.1 var(--fuente-titulo);
+    letter-spacing: -.02em; font-variant-numeric: tabular-nums;
+  }
+  .metrica .cifra.texto { font-size: var(--t-lg); }
+  .metrica .rotulo { font-size: var(--t-xs); color: var(--tenue); margin-top: var(--e-1); }
+
+  h2 {
+    font: 600 var(--t-lg)/1.3 var(--fuente-titulo);
+    letter-spacing: -.01em; margin: var(--e-5) 0 var(--e-2);
+  }
+  h2:first-of-type { margin-top: 0; }
+  h2 .cuenta { color: var(--tenue); font-weight: 400; }
+
+  .controles {
+    display: flex; flex-wrap: wrap; gap: var(--e-1);
+    margin-bottom: var(--e-3); align-items: center;
+  }
+  .filtro {
+    border: 1px solid var(--borde); background: var(--tarjeta); color: var(--texto);
+    border-radius: 999px; padding: 6px 14px; font: var(--t-xs)/1.4 var(--fuente);
+    cursor: pointer;
+  }
+  .filtro:hover { border-color: var(--acento); }
+  .filtro[aria-pressed="true"] { background: var(--acento); border-color: var(--acento); color: #fff; }
+  #buscar {
+    flex: 1 1 220px; min-width: 160px;
+    border: 1px solid var(--borde); background: var(--tarjeta); color: var(--texto);
+    border-radius: 999px; padding: 6px 14px; font: var(--t-xs)/1.4 var(--fuente);
+  }
+  #buscar:focus-visible, .filtro:focus-visible {
+    outline: 2px solid var(--acento); outline-offset: 2px;
+  }
+
+  .oferta {
+    background: var(--tarjeta); border: 1px solid var(--borde);
+    border-radius: 12px; padding: var(--e-2) var(--e-3);
+    margin-bottom: var(--e-1); box-shadow: var(--sombra);
+  }
+  .oferta.reciente { border-left: 3px solid var(--nuevo); }
+  .oferta h3 { font: 600 var(--t-base)/1.35 var(--fuente); margin: 0 0 var(--e-1); }
+  .oferta h3 a { color: inherit; text-decoration: none; }
+  .oferta h3 a:hover { color: var(--acento); text-decoration: underline; }
+  .oferta h3 a:focus-visible { outline: 2px solid var(--acento); outline-offset: 3px; border-radius: 3px; }
+  .meta {
+    display: flex; flex-wrap: wrap; gap: var(--e-1) var(--e-2);
+    font-size: var(--t-xs); color: var(--tenue); align-items: center;
+  }
+  .etiqueta {
+    font-size: var(--t-xs); padding: 2px 10px; border-radius: 999px;
+    border: 1px solid var(--borde); white-space: nowrap;
+  }
+  .etiqueta.fuente { border-color: var(--acento); color: var(--acento); }
+  .etiqueta.nueva {
+    background: var(--nuevo-fondo); color: var(--nuevo);
+    border-color: transparent; font-weight: 600;
+  }
+  time { font-variant-numeric: tabular-nums; }
+
+  /* La tarjeta aporta el marco y el inset; el envoltorio solo el scroll, para
+     que al desplazar en horizontal el borde redondeado no se corte. */
+  .tarjeta-tabla {
+    background: var(--tarjeta); border: 1px solid var(--borde);
+    border-radius: 12px; box-shadow: var(--sombra); padding: var(--e-2);
+  }
+  .tabla-envoltorio { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: var(--t-xs); }
+  th, td {
+    text-align: left; padding: 10px var(--e-2);
+    border-bottom: 1px solid var(--borde); white-space: nowrap;
+  }
+  th { font-weight: 600; color: var(--tenue); }
+  tr:last-child td { border-bottom: 0; }
+  td.num, th.num { text-align: right; }
+  td.num { font-family: var(--fuente-cifra); font-variant-numeric: tabular-nums; }
+  .con-error { color: var(--error); }
+  .vacio { color: var(--tenue); padding: var(--e-5) var(--e-3); text-align: center; }
+</style>
+</head>
+<body>
+<div class="envoltorio">
+  <header>
+    <h1>Vigilante de ofertas</h1>
+    <p class="estado"><span class="punto parpadeo" id="punto"></span><span id="estado">cargando…</span></p>
+  </header>
+
+  <div class="metricas" id="metricas"></div>
+
+  <h2>Ofertas <span class="cuenta" id="cuenta"></span></h2>
+
+  <div class="controles">
+    <input id="buscar" type="search" placeholder="Filtrar por título o empresa…" autocomplete="off" aria-label="Filtrar ofertas">
+    <span id="filtros"></span>
+  </div>
+
+  <div id="lista"></div>
+
+  <h2>Últimos ciclos</h2>
+  <div class="tarjeta-tabla">
+    <div class="tabla-envoltorio">
+    <table>
+      <thead><tr>
+        <th>Ciclo</th><th>Cuándo</th><th class="num">Revisadas</th>
+        <th class="num">Nuevas</th><th class="num">Avisadas</th><th class="num">Seg.</th><th>Estado</th>
+      </tr></thead>
+      <tbody id="ciclos"></tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<script>
+const INTERVALO = 20000;
+let datos = { ofertas: [] }, historia = { ciclos: [] };
+let filtro = "todas", texto = "";
+let ultimaCarga = null, fallos = 0;
+
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+function hace(iso) {
+  if (!iso) return "";
+  const seg = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (!isFinite(seg)) return "";
+  if (seg < 60) return "hace un momento";
+  const m = Math.floor(seg / 60);
+  if (m < 60) return `hace ${m} min`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `hace ${h} h`;
+  return `hace ${Math.floor(h / 24)} d`;
+}
+
+// Misma logica que texto_antiguedad() del vigilante, para que el panel no
+// muestre un valor congelado entre ciclos.
+function antiguedad(iso) {
+  const d = iso && new Date(iso);
+  if (!d || isNaN(d)) return null;
+  const horas = Math.max((Date.now() - d.getTime()) / 3600000, 0);
+  if (horas < 1) { const m = Math.max(Math.floor(horas * 60), 1); return `Hace ${m} minuto${m !== 1 ? "s" : ""}`; }
+  if (horas < 24) { const h = Math.floor(horas); return `Hace ${h} hora${h !== 1 ? "s" : ""}`; }
+  const dias = Math.floor(horas / 24);
+  if (dias === 1) return "Ayer";
+  if (dias < 30) return `Hace ${dias} días`;
+  return "Más de 30 días";
+}
+
+function fecha(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return isNaN(d) ? "—" : d.toLocaleString("es-CO", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+}
+
+async function cargar() {
+  try {
+    const [o, h] = await Promise.all([
+      fetch("api/ofertas", { cache: "no-store" }).then(r => r.json()),
+      fetch("api/historial", { cache: "no-store" }).then(r => r.json()),
+    ]);
+    datos = o && Array.isArray(o.ofertas) ? o : { ofertas: [] };
+    historia = h && Array.isArray(h.ciclos) ? h : { ciclos: [] };
+    ultimaCarga = new Date();
+    fallos = 0;
+  } catch (e) {
+    fallos++;
+  }
+  pintar();
+}
+
+function pintar() {
+  const ofertas = datos.ofertas || [];
+  const ciclos = historia.ciclos || [];
+  const ultimo = ciclos[0];
+
+  const punto = document.getElementById("punto");
+  punto.className = "punto" + (fallos ? " fallo" : " parpadeo");
+  document.getElementById("estado").textContent = fallos
+    ? `sin conexión con el vigilante (${fallos} intento${fallos > 1 ? "s" : ""})`
+    : `actualizado ${hace(ultimaCarga && ultimaCarga.toISOString())}`;
+
+  const dia = 24 * 3600 * 1000;
+  const nuevasCiclo = ofertas.filter(o => o.estado === "nueva").length;
+  const nuevasHoy = ofertas.filter(o => o.detectada && Date.now() - new Date(o.detectada).getTime() < dia).length;
+  const pendientes = ofertas.filter(o => o.notificada === false).length;
+  const metricas = [
+    [ofertas.length, "ofertas guardadas", false],
+    [nuevasCiclo, "nuevas en el último ciclo", false],
+    [nuevasHoy, "detectadas en 24 h", false],
+    [ultimo ? fecha(ultimo.fecha) : "—", "última revisión", true],
+    [pendientes, "avisos pendientes", false],
+  ];
+  document.getElementById("metricas").innerHTML = metricas
+    .map(([c, r, esTexto]) =>
+      `<div class="metrica"><div class="cifra${esTexto ? " texto" : ""}">${esc(c)}</div>
+       <div class="rotulo">${esc(r)}</div></div>`)
+    .join("");
+
+  const busquedas = [...new Set(ofertas.map(o => o.busqueda).filter(Boolean))];
+  document.getElementById("filtros").innerHTML = ["todas", ...busquedas]
+    .map(b => `<button class="filtro" data-b="${esc(b)}" aria-pressed="${b === filtro}">${esc(b)}</button>`)
+    .join(" ");
+
+  const t = texto.trim().toLowerCase();
+  const visibles = ofertas.filter(o =>
+    (filtro === "todas" || o.busqueda === filtro) &&
+    (!t || (o.titulo || "").toLowerCase().includes(t) || (o.empresa || "").toLowerCase().includes(t)));
+
+  document.getElementById("cuenta").textContent =
+    visibles.length === ofertas.length ? `· ${ofertas.length}` : `· ${visibles.length} de ${ofertas.length}`;
+
+  document.getElementById("lista").innerHTML = visibles.length
+    ? visibles.map(o => {
+        const esNueva = o.estado === "nueva";
+        return `<article class="oferta${esNueva ? " reciente" : ""}">
+          <h3><a href="${esc(o.url)}" target="_blank" rel="noopener">${esc(o.titulo)}</a></h3>
+          <div class="meta">
+            <span>${esc(o.empresa || "empresa no indicada")}</span>
+            <time datetime="${esc(o.publicada_aprox)}" title="${esc(o.publicada_aprox)}">${esc(antiguedad(o.publicada_aprox) || o.publicada || "")}</time>
+            ${o.fuente ? `<span class="etiqueta fuente">${esc(o.fuente)}</span>` : ""}
+            <span class="etiqueta">${esc(o.busqueda || "")}</span>
+            ${esNueva ? '<span class="etiqueta nueva">nueva</span>' : ""}
+            ${o.notificada === false ? '<span class="etiqueta">aviso pendiente</span>' : ""}
+          </div>
+        </article>`;
+      }).join("")
+    : `<p class="vacio">${ofertas.length ? "Ninguna oferta coincide con el filtro." : "Todavía no hay ofertas guardadas."}</p>`;
+
+  document.getElementById("ciclos").innerHTML = ciclos.map(c => `
+    <tr>
+      <td class="num">${esc(c.ciclo)}</td>
+      <td>${fecha(c.fecha)}</td>
+      <td class="num">${esc(c.ofertas_revisadas)}</td>
+      <td class="num">${esc(c.nuevas)}</td>
+      <td class="num">${esc(c.notificadas ?? 0)}</td>
+      <td class="num">${esc(c.segundos)}</td>
+      <td class="${c.errores ? "con-error" : ""}">${c.errores ? `${c.errores} error(es)` : "ok"}</td>
+    </tr>`).join("") || '<tr><td colspan="7" class="vacio">Sin ciclos registrados.</td></tr>';
+}
+
+document.getElementById("filtros").addEventListener("click", e => {
+  const b = e.target.closest("button[data-b]");
+  if (b) { filtro = b.dataset.b; pintar(); }
+});
+document.getElementById("buscar").addEventListener("input", e => { texto = e.target.value; pintar(); });
+
+cargar();
+setInterval(cargar, INTERVALO);
+setInterval(pintar, 30000);
+</script>
+</body>
+</html>

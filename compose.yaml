@@ -1,0 +1,29 @@
+services:
+  vigilante:
+    build: .
+    image: ultima-oferta:3.14
+    container_name: ofertas-vigilante
+    restart: unless-stopped
+    environment:
+      TZ: America/Bogota
+      # Credenciales en ./.env (ver .env.example). Si faltan, el vigilante
+      # sigue funcionando y solo escribe los JSON, sin enviar avisos.
+      TELEGRAM_TOKEN: "${TELEGRAM_TOKEN:-}"
+      TELEGRAM_CHAT_ID: "${TELEGRAM_CHAT_ID:-}"
+    ports:
+      # Solo accesible desde este equipo, no desde la red local.
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ./datos:/datos
+    # Revisa las ofertas mas recientes de cada busqueda, cada 5 minutos.
+    command:
+      - "desarrollador full stack"
+      - "desarrollador software"
+      - "desarrollador backend"
+      # LinkedIn: se pega el enlace del buscador; los filtros del propio
+      # enlace (geoId, f_TPR=r86400 = ultimas 24 h) se respetan tal cual.
+      - "https://www.linkedin.com/jobs/search-results/?keywords=Desarrollador&geoId=100876405&distance=0.0&f_TPR=r86400"
+      - "--intervalo"
+      - "300"
+      - "--top"
+      - "10"
